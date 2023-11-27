@@ -9,6 +9,25 @@ typedef struct {
   ssize_t input_length;
 } InputBuffer;
 
+typedef struct {
+  StatementType type;
+} Statement;
+
+typedef enum {
+  COMMAND_SUCCESS,
+  COMMAND_UNRECOGNIZED
+} CommandResult;
+
+typedef enum { 
+  STATEMENT_INSERT, 
+  STATEMENT_SELECT 
+} StatementType;
+
+typedef enum { 
+  STATEMENT_SUCCESS,
+  STATEMENT_UNRECOGNIZED 
+} PrepareStatementResult;
+
 InputBuffer* create_input_buffer() {
   InputBuffer* input_buffer = (InputBuffer*)malloc(sizeof(InputBuffer));
   input_buffer->buffer = NULL;
@@ -34,19 +53,66 @@ void close_input_buffer(InputBuffer* input_buffer) {
     free(input_buffer);
 }
 
-// Main program loop
+// !exit or !quit can be used to terminate the program.
+CommandResult command(InputBuffer* input_buffer) {
+  if (strcmp(input_buffer->buffer, "!exit") == 0 || strcmp(input_buffer->buffer, "!quit") == 0) {
+    exit(EXIT_SUCCESS);
+  } else {
+    return COMMAND_UNRECOGNIZED;
+  }
+}
+
+PrepareStatementResult prepare_statement(InputBuffer* input_buffer,
+                                Statement* statement) {
+  if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
+    statement->type = STATEMENT_INSERT;
+    return PREPARE_SUCCESS;
+  }
+  if (strcmp(input_buffer->buffer, "select") == 0) {
+    statement->type = STATEMENT_SELECT;
+    return PREPARE_SUCCESS;
+  }
+  return PREPARE_UNRECOGNIZED_STATEMENT;
+}
+
+void execute_statement(Statement* statement) {
+  switch (statement->type) {
+    case (STATEMENT_INSERT):
+      break;
+    case (STATEMENT_SELECT):
+      break;
+  }
+}
+
+// Main program loop. 
 int main(int argc, char* argv[]) {
   InputBuffer* input_buffer = create_input_buffer();
   while (true) {
     printf("db > ");
     get_input(input_buffer);
 
-    // Exit and quit can be used to exit the program.
-    if (strcmp(input_buffer->buffer, "exit") == 0 || strcmp(input_buffer->buffer, "quit") == 0) {
-      close_input_buffer(input_buffer);
-      exit(EXIT_SUCCESS);
-    } else {
-      printf("Unrecognized command '%s'.\n", input_buffer->buffer);
-    }
+    // Non-SQL commands should start with an exclamation mark "!".
+    if (input_buffer->buffer[0] == '!') {
++      switch (command(input_buffer)) {
++        case (COMMAND_SUCCESS):
++          continue;
++        case (COMMAND_UNRECOGNIZED):
++          printf("Unrecognized command '%s'\n", input_buffer->buffer);
++          continue;
++      }
+     }
++
++    Statement statement;
++    switch (prepare_statement(input_buffer, &statement)) {
++      case (STATEMENT_SUCCESS):
++        break;
++      case (STATEMENT_UNRECOGNIZED):
++        printf("Unrecognized keyword at start of '%s'.\n",
++               input_buffer->buffer);
++        continue;
++    }
++
++    execute_statement(&statement);
++    printf("Executed.\n");
   }
 }
