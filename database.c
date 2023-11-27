@@ -10,6 +10,12 @@ typedef struct {
 }
 InputBuffer;
 
+typedef enum { 
+  STATEMENT_INSERT, 
+  STATEMENT_SELECT 
+} 
+StatementType;
+
 typedef struct {
   StatementType type;
 }
@@ -22,14 +28,8 @@ typedef enum {
 CommandResult;
 
 typedef enum {
-  STATEMENT_INSERT,
-  STATEMENT_SELECT
-}
-StatementType;
-
-typedef enum {
-  STATEMENT_SUCCESS,
-  STATEMENT_UNRECOGNIZED
+  PREPARE_STATEMENT_SUCCESS,
+  PREPARE_STATEMENT_UNRECOGNIZED
 }
 PrepareStatementResult;
 
@@ -42,10 +42,10 @@ InputBuffer * create_input_buffer() {
 }
 
 // Read from input stream (standard input). Remove the last byte from stdin ("\n" newline character)
-void read_input(InputBuffer * input_buffer) {
+void get_input(InputBuffer * input_buffer) {
   ssize_t bytes_read = getline( & (input_buffer -> buffer), & (input_buffer -> buffer_length), stdin);
   if (bytes_read <= 0) {
-    printf("Error when reading input!");
+    printf("Error when reading input!\n");
     exit(EXIT_FAILURE);
   }
   input_buffer -> input_length = bytes_read - 1;
@@ -71,13 +71,13 @@ PrepareStatementResult prepare_statement(InputBuffer * input_buffer,
   Statement * statement) {
   if (strncmp(input_buffer -> buffer, "insert", 6) == 0) {
     statement -> type = STATEMENT_INSERT;
-    return PREPARE_SUCCESS;
+    return PREPARE_STATEMENT_SUCCESS;
   }
   if (strcmp(input_buffer -> buffer, "select") == 0) {
     statement -> type = STATEMENT_SELECT;
-    return PREPARE_SUCCESS;
+    return PREPARE_STATEMENT_SUCCESS;
   }
-  return PREPARE_UNRECOGNIZED_STATEMENT;
+  return PREPARE_STATEMENT_UNRECOGNIZED;
 }
 
 void execute_statement(Statement * statement) {
@@ -109,11 +109,10 @@ int main(int argc, char * argv[]) {
 
     Statement statement;
     switch (prepare_statement(input_buffer, & statement)) {
-    case (STATEMENT_SUCCESS):
+    case (PREPARE_STATEMENT_SUCCESS):
       break;
-    case (STATEMENT_UNRECOGNIZED):
-      printf("Unrecognized keyword at start of '%s'.\n",
-        input_buffer -> buffer);
+    case (PREPARE_STATEMENT_UNRECOGNIZED):
+      printf("Unrecognized keyword at start of command: '%s'.\n", input_buffer -> buffer);
       continue;
     }
 
